@@ -3,7 +3,7 @@ import java.util.*;
 /**
  * Created by Don on 7/3/2017.
  */
-public class GraphTest {
+public class UnweightedGraphTest {
     public static void main(String[] args) {
         Map<Integer, Set<Integer>> nodeToNeighbors1 = new HashMap<>();
         addEntryToIntegerMap(nodeToNeighbors1, 1, 2, 5, 6, 7, 8, 0);

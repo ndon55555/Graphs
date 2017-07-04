@@ -1,35 +1,37 @@
+import com.sun.xml.internal.bind.v2.TODO;
+
 import java.util.*;
 
 /**
  * Created by Don on 7/3/2017.
  */
-public class UnweightedGraph<T> implements Graph<T> {
+public class WeightedGraph<T> implements Graph<T> {
     private int size;
-    private Map<T, Set<T>> nodeToNeighbors;
+    private Map<T, Set<WeightedEdge<T>>> nodeToEdges;
 
     ////////////////
     /*Constructors*/
     ////////////////
 
-    public UnweightedGraph() {
-        nodeToNeighbors = new HashMap<>();
+    public WeightedGraph() {
+        nodeToEdges = new HashMap<>();
         size = 0;
     }
 
-    public UnweightedGraph(UnweightedGraph<T> that) {
+    public WeightedGraph(WeightedGraph<T> that) {
         this(that.getMapping());
     }
 
-    public UnweightedGraph(Map<T, Set<T>> nodeToNeighbors) {
+    public WeightedGraph(Map<T, Set<WeightedEdge<T>>> nodeToEdges) {
         this();
-        add(nodeToNeighbors);
+        add(nodeToEdges);
     }
 
     ////////////
     /*Mutators*/
     ////////////
 
-    public void add(T newNode, Set<T> neighbors) {
+    public void add(T newNode, Set<WeightedEdge<T>> edges) {
         if (newNode == null) {
             throw new IllegalArgumentException("Node is null");
         }
@@ -37,28 +39,30 @@ public class UnweightedGraph<T> implements Graph<T> {
         Set<T> curNodes = getNodes();
 
         if (curNodes.contains(newNode)) {
-            nodeToNeighbors.get(newNode).addAll(neighbors);
+            nodeToEdges.get(newNode).addAll(edges);
         } else {
-            nodeToNeighbors.put(newNode, neighbors);
+            nodeToEdges.put(newNode, edges);
             size++;
         }
 
-        for (T neighbor : neighbors) {
+        for (WeightedEdge<T> edge : edges) {
+            T neighbor = edge.getDestination();
+
             if (!curNodes.contains(neighbor)) {
-                nodeToNeighbors.put(neighbor, new HashSet<>());
+                nodeToEdges.put(neighbor, new HashSet<>());
                 size++;
             }
         }
     }
 
-    public void add(UnweightedGraph<T> that) {
+    public void add(WeightedGraph<T> that) {
         add(that.getMapping());
     }
 
-    public void add(Map<T, Set<T>> thatNodeToNeighbors) {
-        for (T thatNode : thatNodeToNeighbors.keySet()) {
-            Set<T> thatNeighbors = thatNodeToNeighbors.get(thatNode);
-            add(thatNode, thatNeighbors);
+    public void add(Map<T, Set<WeightedEdge<T>>> thatNodeToEdges) {
+        for (T thatNode : thatNodeToEdges.keySet()) {
+            Set<WeightedEdge<T>> thatEdges = thatNodeToEdges.get(thatNode);
+            add(thatNode, thatEdges);
         }
     }
 
@@ -68,11 +72,11 @@ public class UnweightedGraph<T> implements Graph<T> {
             throw new IllegalArgumentException("Node is null");
         }
 
-        nodeToNeighbors.remove(nodeToRemove);
+        nodeToEdges.remove(nodeToRemove);
         size--;
 
         for (T node : getNodes()) {
-            nodeToNeighbors.get(node).remove(nodeToRemove);
+            nodeToEdges.get(node).remove(nodeToRemove);
         }
     }
 
@@ -80,8 +84,8 @@ public class UnweightedGraph<T> implements Graph<T> {
     /*Accessors*/
     /////////////
 
-    public Map<T, Set<T>> getMapping() {
-        return nodeToNeighbors;
+    public Map<T, Set<WeightedEdge<T>>> getMapping() {
+        return nodeToEdges;
     }
 
     @Override
@@ -91,7 +95,7 @@ public class UnweightedGraph<T> implements Graph<T> {
 
     @Override
     public Set<T> getNodes() {
-        return nodeToNeighbors.keySet();
+        return nodeToEdges.keySet();
     }
 
     @Override
@@ -107,8 +111,10 @@ public class UnweightedGraph<T> implements Graph<T> {
     private List<T> search(T start, T end, boolean isBreadthFirst) {
         LinkedList<T> nextNodes = new LinkedList<>();
         Map<T, T> childToParent = new HashMap<>();
+        Map<T, Double> childToTotalWeightFromStart = new HashMap<>();
         nextNodes.add(start);
         childToParent.put(start, null);
+        childToTotalWeightFromStart.put(start, 0.0);
 
         while (!nextNodes.isEmpty()) {
             T node;
@@ -120,15 +126,20 @@ public class UnweightedGraph<T> implements Graph<T> {
             }
 
             if (node == end) {
-                break;
+                continue;
             }
 
             T parent = childToParent.get(node);
-            Set<T> neighbors = nodeToNeighbors.get(node);
+            Set<WeightedEdge<T>> edges = nodeToEdges.get(node);
 
-            for (T neighbor : neighbors) {
-                if (neighbor != parent && !childToParent.keySet().contains(neighbor)) {
+            for (WeightedEdge<T> edge : edges) {
+                T neighbor = edge.getDestination();
+                double potentialTotalWeight = childToTotalWeightFromStart.get(node) + edge.getWeight();
+
+                if (neighbor != parent
+                        && (!childToParent.keySet().contains(neighbor) || potentialTotalWeight < childToTotalWeightFromStart.get(neighbor))) {
                     childToParent.put(neighbor, node);
+                    childToTotalWeightFromStart.put(neighbor, potentialTotalWeight);
                     nextNodes.add(neighbor);
                 }
             }
@@ -155,7 +166,7 @@ public class UnweightedGraph<T> implements Graph<T> {
         Set<T> nodes = getNodes();
 
         for (T node : nodes) {
-            s += node.toString() + " -> " + nodeToNeighbors.get(node).toString() + "\n";
+            s += node.toString() + " -> " + nodeToEdges.get(node).toString() + "\n";
         }
 
         return s;
